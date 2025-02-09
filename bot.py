@@ -98,6 +98,9 @@ async def send_question(ctx, quiz_instance):
     quiz_instance.current_question_index += 1
     question_data = quiz_instance.get_current_question()
     question = question_data["question"]
+    question = question.replace("\n", "\n")
+    question = question.replace("\r", " ")
+    question = question.replace("\t", " ")
     options = question_data["options"]
 
     if len(options) < 2:
@@ -136,6 +139,8 @@ async def next_question(ctx):
 
     # Reset votes for the next question
     quiz_instance.votes = {}
+      
+
     await send_question(ctx, quiz_instance)
 
 
