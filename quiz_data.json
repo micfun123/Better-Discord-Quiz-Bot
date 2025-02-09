@@ -1,0 +1,91 @@
+{
+    "quiz1": {
+        "questions": [
+            {
+                "question": "What is the capital of France?",
+                "options": [
+                    "Paris",
+                    "London",
+                    "Berlin"
+                ]
+            },
+            {
+                "question": "What is 2 + 2?",
+                "options": [
+                    "3",
+                    "4",
+                    "5"
+                ]
+            }
+        ]
+    },
+    "quiz2": {
+        "questions": [
+            {
+                "question": "What is the largest planet?",
+                "options": [
+                    "Earth",
+                    "Jupiter",
+                    "Saturn"
+                ]
+            },
+            {
+                "question": "What is the smallest country?",
+                "options": [
+                    "Vatican City",
+                    "Monaco",
+                    "San Marino"
+                ]
+            }
+        ]
+    },
+    "programms": {
+        "questions": [
+            {
+                "question": "What is the capital of France?",
+                "options": [
+                    "Paris",
+                    "London",
+                    "Berlin",
+                    "Madrid"
+                ]
+            },
+            {
+                "question": "Which language is known as the 'language of the web'?",
+                "options": [
+                    "Python",
+                    "JavaScript",
+                    "Java",
+                    "C++"
+                ]
+            },
+            {
+                "question": "What is the result of 2 + 2 * 2?",
+                "options": [
+                    "6",
+                    "8",
+                    "4",
+                    "10"
+                ]
+            },
+            {
+                "question": "Which of the following is a Python framework for web development?",
+                "options": [
+                    "Django",
+                    "Spring",
+                    "Laravel",
+                    "Ruby on Rails"
+                ]
+            },
+            {
+                "question": "What is the output of `print(type(3.14))` in Python?",
+                "options": [
+                    "<class 'int'>",
+                    "<class 'float'>",
+                    "<class 'str'>",
+                    "<class 'list'>"
+                ]
+            }
+        ]
+    }
+}
