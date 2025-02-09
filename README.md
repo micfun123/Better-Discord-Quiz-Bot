@@ -23,7 +23,7 @@ This is a Discord bot designed to facilitate interactive quizzes within a Discor
     
 -   A Discord bot token
     
--   `discord.py` library
+-   `py-cord` library
     
 -   `python-dotenv` library
     
