@@ -54,7 +54,7 @@ This is a Discord bot designed to facilitate interactive quizzes within a Discor
 
 ### Commands
 
--   **`!start_quiz <quiz_name>`**: Starts a quiz with the specified name.
+-   **`!start_quiz <quiz_name>`**: Starts a quiz with the specified name. If you want users to be able to select multiple answers use **`!start_quiz <quiz_name> True`**
     
 -   **`!next_question`**: Moves to the next question in the quiz. Only the quiz starter can use this command.
     
