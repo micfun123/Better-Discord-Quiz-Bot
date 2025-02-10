@@ -30,11 +30,12 @@ quizzes = {}
 
 
 class Quiz:
-    def __init__(self, quiz_name, quiz_starter_id):
+    def __init__(self, quiz_name, quiz_starter_id, allow_multiple_answers=False):
         self.quiz_name = quiz_name
         self.quiz_starter_id = quiz_starter_id
         self.current_question_index = -1
         self.votes = {}
+        self.allow_multiple_answers = allow_multiple_answers
 
     def get_current_question(self):
         if self.current_question_index < len(quiz_data[self.quiz_name]["questions"]):
@@ -60,19 +61,36 @@ class QuizButton(Button):
         user_id = interaction.user.id
         quiz_instance = self.parent_view.quiz_instance
 
-        if user_id in quiz_instance.votes:
-            prev_vote = quiz_instance.votes[user_id]
-            quiz_instance.votes[prev_vote] -= 1
+        if quiz_instance.allow_multiple_answers:
+            if user_id not in quiz_instance.votes:
+                quiz_instance.votes[user_id] = set()
 
-        quiz_instance.votes[user_id] = self.label
-        quiz_instance.votes[self.label] = quiz_instance.votes.get(self.label, 0) + 1
-        await interaction.response.send_message(
-            f"You voted for {self.label}", ephemeral=True
-        )
+            if self.label in quiz_instance.votes[user_id]:
+                quiz_instance.votes[user_id].remove(self.label)
+                quiz_instance.votes[self.label] = quiz_instance.votes.get(self.label, 0) - 1
+                await interaction.response.send_message(
+                    f"You removed your vote for {self.label}", ephemeral=True
+                )
+            else:
+                quiz_instance.votes[user_id].add(self.label)
+                quiz_instance.votes[self.label] = quiz_instance.votes.get(self.label, 0) + 1
+                await interaction.response.send_message(
+                    f"You voted for {self.label}", ephemeral=True
+                )
+        else:
+            if user_id in quiz_instance.votes:
+                prev_vote = quiz_instance.votes[user_id]
+                quiz_instance.votes[prev_vote] -= 1
+
+            quiz_instance.votes[user_id] = self.label
+            quiz_instance.votes[self.label] = quiz_instance.votes.get(self.label, 0) + 1
+            await interaction.response.send_message(
+                f"You voted for {self.label}", ephemeral=True
+            )
 
 
 @bot.command()
-async def start_quiz(ctx, quiz_name: str):
+async def start_quiz(ctx, quiz_name: str, allow_multiple_answers: bool = False):
     if quiz_name not in quiz_data:
         await ctx.send("Quiz not found.")
         return
@@ -82,7 +100,7 @@ async def start_quiz(ctx, quiz_name: str):
         await ctx.send("A quiz is already running in this channel.")
         return
 
-    quizzes[channel_id] = Quiz(quiz_name, ctx.author.id)
+    quizzes[channel_id] = Quiz(quiz_name, ctx.author.id, allow_multiple_answers)
     await ctx.send(f"Quiz '{quiz_name}' is ready. Use `!next_question` to start.")
 
 
@@ -139,7 +157,6 @@ async def next_question(ctx):
 
     # Reset votes for the next question
     quiz_instance.votes = {}
-      
 
     await send_question(ctx, quiz_instance)
 
