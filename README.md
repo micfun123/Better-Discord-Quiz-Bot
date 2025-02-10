@@ -1,5 +1,8 @@
 # Discord Quiz Bot
 
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/Michaelrbparker)
+
+##
 This is a Discord bot designed to facilitate interactive quizzes within a Discord server. The bot allows users to start quizzes, answer questions, and view results in real-time. It supports multiple quizzes, each defined by a JSON file, and provides a user-friendly interface for managing and participating in quizzes.
 
 ## Features
