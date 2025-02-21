@@ -1,0 +1,198 @@
+{
+    "session1": {
+        "questions": [
+            {
+                "question": "Which of the following are principles of the Zero Trust model?",
+                "options": [
+                    "Verify explicitly",
+                    "Block access",
+                    "Least privileged access",
+                    "Assume breach"
+                ]
+            },
+            {
+                "question": "The shared responsibility model identifies which security tasks are handled by the cloud provider, and which are handled by the customer. Which approach places more responsibility on the cloud provider?",
+                "options": [
+                    "On-premises datacenter",
+                    "Infrastructure as a service (IaaS)",
+                    "Software as a service (SaaS)",
+                    "Platform as a service (PaaS)"
+                ]
+            },
+            {
+                "question": "In the shared responsibility model, in which approach does the customer own the security tasks related to information and data, devices, and accounts and identities?",
+                "options": [
+                    "On-premises datacenter",
+                    "Infrastructure as a service (IaaS) and platform as a service (PaaS)",
+                    "Software as a service (SaaS)",
+                    "All the above"
+                ]
+            },
+            {
+                "question": "The HTTPS protocol is an example of which type of encryption?",
+                "options": [
+                    "Encryption in transit",
+                    "Encryption at rest",
+                    "No encryption",
+                    "Hashing"
+                ]
+            },
+            {
+                "question": "What is the term used to describe the process for verifying the identity of an object, service, or person?",
+                "options": [
+                    "Authorization",
+                    "Authentication",
+                    "Auditing",
+                    "Administration"
+                ]
+            }
+        ]
+    },
+    "session2": {
+        "questions": [
+            {
+                "question": "Which type of Microsoft Entra ID setup is most likely for personal devices used by employees to connect to the organization’s resources?",
+                "options": [
+                    "As Microsoft Entra registered devices",
+                    "As Microsoft Entra joined devices",
+                    "As Microsoft Entra hybrid joined devices",
+                    "They will not be visible to the organization’s Microsoft Entra ID implementation"
+                ]
+            },
+            {
+                "question": "Which of the following verification methods can be used with Microsoft Entra multifactor authentication?",
+                "options": [
+                    "Microsoft Authenticator app",
+                    "SMS",
+                    "Voice call",
+                    "Security questions"
+                ]
+            },
+            {
+                "question": "Self-service password reset (SSPR) works in which of the following scenarios?",
+                "options": [
+                    "Password change",
+                    "Password reset",
+                    "Account unlock",
+                    "All the above"
+                ]
+            },
+            {
+                "question": "Which of the following are signals that can be used by Conditional Access?",
+                "options": [
+                    "Named location information",
+                    "User risk",
+                    "User or group membership",
+                    "All the above"
+                ]
+            },
+            {
+                "question": "How does Privileged Identity Management (PIM) mitigate the risks of excessive, unnecessary, or misused access permissions to Azure resources and Microsoft Entra?",
+                "options": [
+                    "Time-based role activation",
+                    "Approval-based role activation",
+                    "Password-based role activation",
+                    "Risk-based role activation"
+                ]
+            }
+        ]
+    },
+    "session3": {
+        "questions": [
+            {
+                "question": "An attacker can bring down your website by sending a large volume of network traffic to your servers. Which Azure service can help protect from this kind of attack?",
+                "options": [
+                    "Azure Firewall",
+                    "Azure DDoS protection",
+                    "Network security groups (NSGs)",
+                    "Bastion"
+                ]
+            },
+            {
+                "question": "Which features fall under the pillar of Cloud Security Posture Management (CSPM)?",
+                "options": [
+                    "Secure Score",
+                    "Endpoint detection and response (EDR)",
+                    "Recommendations",
+                    "Vulnerability scanning for VMs"
+                ]
+            },
+            {
+                "question": "Which Azure security solution provides cloud workload protection plans that can be enabled separately and will run simultaneously to provide a comprehensive defense for compute data and service layers in your environment?",
+                "options": [
+                    "Microsoft Defender for Cloud",
+                    "Microsoft Sentinel",
+                    "Azure Security Baselines",
+                    "Azure Policy"
+                ]
+            },
+            {
+                "question": "Which capability of Microsoft Sentinel can help automate and orchestrate your response to incidents and common security tasks?",
+                "options": [
+                    "Workbooks",
+                    "Security playbooks",
+                    "Connectors",
+                    "The MITRE framework"
+                ]
+            },
+            {
+                "question": "Which of the Microsoft Defender XDR services safeguards your organization against malicious threats posed by email messages, links (URLs), and collaboration tools?",
+                "options": [
+                    "Microsoft Defender for Cloud Apps",
+                    "Microsoft Defender for Office 365",
+                    "Microsoft Defender for Endpoints",
+                    "Microsoft Defender for Identity"
+                ]
+            }
+        ]
+    },
+    "session4": {
+        "questions": [
+            {
+                "question": "Which Priva solution can help limit data overexposure, find and limit data transfers, and minimize stored data?",
+                "options": [
+                    "Priva Privacy Risk Management",
+                    "Priva Subject Rights Requests",
+                    "Consent Management",
+                    "Tracker Scanning"
+                ]
+            },
+            {
+                "question": "What do sensitive information types use to classify data?",
+                "options": [
+                    "Artificial intelligence and machine learning",
+                    "Patterns defined by a regular expression (regex) or a function",
+                    "String length",
+                    "All the above"
+                ]
+            },
+            {
+                "question": "Audit (Premium) supports the long-term retention of audit logs for up to how many years?",
+                "options": [
+                    "5 years",
+                    "3 years",
+                    "10 years",
+                    "25 years"
+                ]
+            },
+            {
+                "question": "Which Microsoft Purview solution can help minimize risk associated with confidentiality violations, intellectual property theft, and regulatory compliance violations?",
+                "options": [
+                    "Microsoft Purview Records Management",
+                    "Microsoft Purview Communications Compliance",
+                    "Microsoft Purview Insider Risk Management",
+                    "Microsoft Purview eDiscovery"
+                ]
+            },
+            {
+                "question": "What capability can prevent users from accidentally sharing sensitive information in a Microsoft Teams chat session?",
+                "options": [
+                    "Use records management capabilities",
+                    "Use retention policies",
+                    "Use data loss prevention policies",
+                    "Apply a sensitivity label to the chat"
+                ]
+            }
+        ]
+    }
+}
