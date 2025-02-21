@@ -9,7 +9,7 @@ load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="+", intents=intents)
 
 
 # Load quiz data from JSON
@@ -166,6 +166,22 @@ async def upload_quiz(ctx):
     
     save_quiz_data()
     await ctx.send("Quiz data uploaded and updated successfully!")
+
+@bot.command()
+async def force_quit(ctx):
+    channel_id = ctx.channel.id
+
+    # Check if the user has "Manage Messages" permission or is the bot owner
+    if not ctx.author.guild_permissions.manage_messages and ctx.author.id != bot.owner_id:
+        await ctx.send("You do not have permission to force quit quizzes in this channel.")
+        return
+
+    if channel_id in quizzes:
+        del quizzes[channel_id]
+        await ctx.send("All quizzes in this channel have been forcefully ended.")
+    else:
+        await ctx.send("No active quiz in this channel.")
+
 
 print("Started")
 bot.run(os.getenv("DISCORD_TOKEN"))
