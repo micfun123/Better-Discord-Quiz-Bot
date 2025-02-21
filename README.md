@@ -62,6 +62,8 @@ This is a Discord bot designed to facilitate interactive quizzes within a Discor
 -   **`!next_question`**: Moves to the next question in the quiz. Only the quiz starter can use this command.
     
 -   **`!upload_quiz`**: Uploads a new quiz via a JSON file attachment.
+
+-   **`!force_quit`**: Ends any quizzes running in that channel.
     
 
 ### Quiz JSON Format
