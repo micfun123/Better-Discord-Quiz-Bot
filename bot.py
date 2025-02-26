@@ -11,6 +11,10 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Max option length for results table
+MAX_OPTION_LENGTH = 15
+# Minimum option length for results table, 6 to match "Option "
+MIN_OPTION_LENGTH = 6
 
 # Load quiz data from JSON
 def load_quiz_data():
@@ -127,24 +131,35 @@ async def next_question(ctx):
     # Only display results if at least one question has been asked
     if quiz_instance.current_question_index >= 0:
         total_votes = sum(v for v in quiz_instance.votes.values() if isinstance(v, int))  # Sum only integers
-        result_table = "Results\nOption       | Count | %\n"
-        result_table += "-" * 30 + "\n"
-        
-        longest_option_length = 0
+
+        # Find longest quiz option (for result table formatting)
+        longest_option_length = MIN_OPTION_LENGTH
         for option in quiz_instance.votes:
-            longest_option_length = max(len(str(option)), longest_option_length)
+            if isinstance(quiz_instance.votes[option], int):  # Ensure it's an integer
+                longest_option_length = max(len(option), longest_option_length)
+                if longest_option_length >= MAX_OPTION_LENGTH:
+                    longest_option_length = MAX_OPTION_LENGTH
+                    break
+
+        # Spaces for option portion of table
+        option_spaces = max(MIN_OPTION_LENGTH,longest_option_length)
+        # Build header + seperator based on option length
+        result_table = "Results\nOption " + " "*max(longest_option_length-MIN_OPTION_LENGTH,0) + "| Count | %\n"
+        result_table += "-" * (16 + option_spaces) + "\n"
+        
 
         for option in quiz_instance.votes:
             if isinstance(quiz_instance.votes[option], int):  # Ensure it's an integer
                 vote_count = quiz_instance.votes[option]
                 percentage = (vote_count / total_votes * 100) if total_votes > 0 else 0
-                result_table += f"{option.ljust(longest_option_length)} | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
-        
+                if len(option) > MAX_OPTION_LENGTH:
+                    option = option[:MAX_OPTION_LENGTH-3] + "..."   # Truncate long options
+                result_table += f"{option.ljust(option_spaces)}"
+                result_table += f" | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
+
         await ctx.send(f"```{result_table}```")
-    
     # Move to the next question
     await send_question(ctx, quiz_instance)
-
 
 
 @bot.command()
