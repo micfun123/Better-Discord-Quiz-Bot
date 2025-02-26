@@ -5,12 +5,12 @@ from discord.ext import commands
 from discord.ui import View, Button
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+
 load_dotenv()
 
-# Set up bot intents (permissions)
+
 intents = discord.Intents.default()
-intents.message_content = True  # Allow the bot to read message content
+intents.message_content = True
 bot = commands.Bot(command_prefix="+", intents=intents)
 
 
@@ -45,12 +45,13 @@ class Quiz:
         self.allow_multiple_answers = allow_multiple_answers  # Allow multiple answers per user
         self.current_view = None  # Store the current View (buttons) for the quiz
         self.current_question_votes = 0  # Store the number of votes for the current question
+        self.votes_message = None  # Store the message displaying the number of votes
 
     # Get the current question based on the index
     def get_current_question(self):
         if self.current_question_index < len(quiz_data[self.quiz_name]["questions"]):
             return quiz_data[self.quiz_name]["questions"][self.current_question_index]
-        return None  # Return None if there are no more questions
+        return None
 
 
 # Custom View to display quiz buttons
@@ -60,7 +61,6 @@ class QuizView(View):
         self.options = options  # List of answer options
         self.quiz_instance = quiz_instance  # Reference to the Quiz instance
         for option in options:
-            # Add a button for each option
             self.add_item(QuizButton(label=option, parent_view=self))
 
 
@@ -68,7 +68,7 @@ class QuizView(View):
 class QuizButton(Button):
     def __init__(self, label, parent_view):
         super().__init__(label=label, style=discord.ButtonStyle.primary)
-        self.parent_view = parent_view  # Reference to the parent QuizView
+        self.parent_view = parent_view
 
     # Callback when a button is clicked
     async def callback(self, interaction: discord.Interaction):
@@ -97,6 +97,17 @@ class QuizButton(Button):
             # Record the new vote
             quiz_instance.votes[user_id] = self.label
             quiz_instance.votes[self.label] = quiz_instance.votes.get(self.label, 0) + 1
+
+        # Update the total number of votes for the current question
+        quiz_instance.current_question_votes = sum(
+            v for v in quiz_instance.votes.values() if isinstance(v, int)
+        )
+
+        # Update the votes message
+        if quiz_instance.votes_message:
+            await quiz_instance.votes_message.edit(
+                content=f"Votes: {quiz_instance.current_question_votes}"
+            )
 
         # Send a confirmation message to the user
         await interaction.response.send_message(f"You voted for {self.label}", ephemeral=True)
@@ -139,6 +150,7 @@ async def send_question(ctx, quiz_instance):
 
     # Reset votes for the new question
     quiz_instance.votes = {option: 0 for option in options}
+    quiz_instance.current_question_votes = 0  # Reset the vote count for the new question
 
     # Create a new View with buttons for the options
     view = QuizView(options, quiz_instance)
@@ -148,11 +160,15 @@ async def send_question(ctx, quiz_instance):
     message = await ctx.send(f"**Question {quiz_instance.current_question_index + 1}: {question}**", view=view)
     quiz_instance.last_message_id = message.id  # Store the message ID for later editing
 
+    # Send a message to display the number of votes
+    votes_message = await ctx.send("Votes: 0")
+    quiz_instance.votes_message = votes_message  
+
 
 @bot.command()
 async def next_question(ctx):
     channel_id = ctx.channel.id
-    if channel_id not in quizzes:  # Check if a quiz is running in the channel
+    if channel_id not in quizzes: 
         await ctx.send("No quiz is currently running in this channel. Use `+start_quiz <quiz_name>` to start a quiz.")
         return
 
@@ -166,7 +182,7 @@ async def next_question(ctx):
     # Disable the buttons in the previous question's message
     if hasattr(quiz_instance, 'last_message_id'):
         try:
-            # Fetch the previous messaged
+            # Fetch the previous message
             previous_message = await ctx.channel.fetch_message(quiz_instance.last_message_id)
             if previous_message:
                 # Disable all buttons in the previous message's view
@@ -180,18 +196,18 @@ async def next_question(ctx):
 
     # Display results if at least one question has been asked
     if quiz_instance.current_question_index >= 0:
-        total_votes = sum(v for v in quiz_instance.votes.values() if isinstance(v, int))  # Sum only integers
+        total_votes = sum(v for v in quiz_instance.votes.values() if isinstance(v, int)) 
         result_table = "Results\nOption       | Count | %\n"
         result_table += "-" * 30 + "\n"
 
         # Build the results table
         for option in quiz_instance.votes:
-            if isinstance(quiz_instance.votes[option], int):  # Ensure it's an integer
+            if isinstance(quiz_instance.votes[option], int): 
                 vote_count = quiz_instance.votes[option]
                 percentage = (vote_count / total_votes * 100) if total_votes > 0 else 0
                 result_table += f"{option.ljust(12)} | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
 
-        await ctx.send(f"```{result_table}```")  # Send the results as a code block
+        await ctx.send(f"```{result_table}```")  
 
     # Move to the next question
     await send_question(ctx, quiz_instance)
@@ -244,4 +260,4 @@ async def force_quit(ctx):
 
 # Start the bot
 print("Started")
-bot.run(os.getenv("DISCORD_TOKEN"))  # Run the bot using the token from the .env file
+bot.run(os.getenv("DISCORD_TOKEN"))
