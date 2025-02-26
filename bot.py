@@ -1,6 +1,6 @@
-import discord
-import json
 import os
+import json
+import discord
 from discord.ext import commands
 from discord.ui import View, Button
 from dotenv import load_dotenv
@@ -13,6 +13,10 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Max option length for results table
+MAX_OPTION_LENGTH = 15
+# Minimum option length for results table, 6 to match "Option "
+MIN_OPTION_LENGTH = 6
 
 # Load quiz data from a JSON file
 def load_quiz_data():
@@ -162,14 +166,15 @@ async def send_question(ctx, quiz_instance):
 
     # Send a message to display the number of votes
     votes_message = await ctx.send("Votes: 0")
-    quiz_instance.votes_message = votes_message  
+    quiz_instance.votes_message = votes_message
 
 
 @bot.command()
 async def next_question(ctx):
     channel_id = ctx.channel.id
-    if channel_id not in quizzes: 
-        await ctx.send("No quiz is currently running in this channel. Use `+start_quiz <quiz_name>` to start a quiz.")
+    if channel_id not in quizzes:
+        await ctx.send("No quiz is currently running in this channel. " \
+                       "Use `!start_quiz <quiz_name>` to start a quiz.")
         return
 
     quiz_instance = quizzes[channel_id]
@@ -196,18 +201,35 @@ async def next_question(ctx):
 
     # Display results if at least one question has been asked
     if quiz_instance.current_question_index >= 0:
-        total_votes = sum(v for v in quiz_instance.votes.values() if isinstance(v, int)) 
-        result_table = "Results\nOption       | Count | %\n"
-        result_table += "-" * 30 + "\n"
+        total_votes = sum(v for v in quiz_instance.votes.values() if isinstance(v, int))  # Sum only integers
 
-        # Build the results table
+        # Find longest quiz option (for result table formatting)
+        longest_option_length = MIN_OPTION_LENGTH
         for option in quiz_instance.votes:
-            if isinstance(quiz_instance.votes[option], int): 
+            if isinstance(quiz_instance.votes[option], int):
+                longest_option_length = max(len(option), longest_option_length)
+                if longest_option_length >= MAX_OPTION_LENGTH:
+                    longest_option_length = MAX_OPTION_LENGTH
+                    break
+
+        # Spaces for option portion of table
+        option_spaces = max(MIN_OPTION_LENGTH,longest_option_length)
+        # Build header + seperator based on option length
+        result_table = "Results\nOption " \
+                        + " "*max(longest_option_length-MIN_OPTION_LENGTH,0) \
+                        + "| Count | %\n"
+        result_table += "-" * (16 + option_spaces) + "\n"
+
+        for option in quiz_instance.votes:
+            if isinstance(quiz_instance.votes[option], int):
                 vote_count = quiz_instance.votes[option]
                 percentage = (vote_count / total_votes * 100) if total_votes > 0 else 0
-                result_table += f"{option.ljust(12)} | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
+                if len(option) > MAX_OPTION_LENGTH:
+                    option = option[:MAX_OPTION_LENGTH-3] + "..."   # Truncate long options
+                result_table += f"{option.ljust(option_spaces)}"
+                result_table += f" | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
 
-        await ctx.send(f"```{result_table}```")  
+        await ctx.send(f"```{result_table}```")
 
     # Move to the next question
     await send_question(ctx, quiz_instance)
