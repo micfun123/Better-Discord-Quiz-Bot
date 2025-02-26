@@ -1,6 +1,6 @@
-import discord
-import json
 import os
+import json
+import discord
 from discord.ext import commands
 from discord.ui import View, Button
 from dotenv import load_dotenv
@@ -166,14 +166,15 @@ async def send_question(ctx, quiz_instance):
 
     # Send a message to display the number of votes
     votes_message = await ctx.send("Votes: 0")
-    quiz_instance.votes_message = votes_message  
+    quiz_instance.votes_message = votes_message
 
 
 @bot.command()
 async def next_question(ctx):
     channel_id = ctx.channel.id
-    if channel_id not in quizzes: 
-        await ctx.send("No quiz is currently running in this channel. Use `+start_quiz <quiz_name>` to start a quiz.")
+    if channel_id not in quizzes:
+        await ctx.send("No quiz is currently running in this channel. \
+                       Use `!start_quiz <quiz_name>` to start a quiz.")
         return
 
     quiz_instance = quizzes[channel_id]
@@ -205,7 +206,7 @@ async def next_question(ctx):
         # Find longest quiz option (for result table formatting)
         longest_option_length = MIN_OPTION_LENGTH
         for option in quiz_instance.votes:
-            if isinstance(quiz_instance.votes[option], int):  # Ensure it's an integer
+            if isinstance(quiz_instance.votes[option], int):
                 longest_option_length = max(len(option), longest_option_length)
                 if longest_option_length >= MAX_OPTION_LENGTH:
                     longest_option_length = MAX_OPTION_LENGTH
@@ -214,12 +215,13 @@ async def next_question(ctx):
         # Spaces for option portion of table
         option_spaces = max(MIN_OPTION_LENGTH,longest_option_length)
         # Build header + seperator based on option length
-        result_table = "Results\nOption " + " "*max(longest_option_length-MIN_OPTION_LENGTH,0) + "| Count | %\n"
+        result_table = "Results\nOption " \
+                        + " "*max(longest_option_length-MIN_OPTION_LENGTH,0) \
+                        + "| Count | %\n"
         result_table += "-" * (16 + option_spaces) + "\n"
-        
 
         for option in quiz_instance.votes:
-            if isinstance(quiz_instance.votes[option], int):  # Ensure it's an integer
+            if isinstance(quiz_instance.votes[option], int):
                 vote_count = quiz_instance.votes[option]
                 percentage = (vote_count / total_votes * 100) if total_votes > 0 else 0
                 if len(option) > MAX_OPTION_LENGTH:
@@ -228,12 +230,12 @@ async def next_question(ctx):
                 result_table += f" | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
 
         await ctx.send(f"```{result_table}```")
+
     # Move to the next question
     await send_question(ctx, quiz_instance)
 
 
 # Command to upload a new quiz via a JSON file
-
 @bot.command()
 async def upload_quiz(ctx):
     if not ctx.message.attachments:  # Check if a file is attached
