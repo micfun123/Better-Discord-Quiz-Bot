@@ -130,11 +130,15 @@ async def next_question(ctx):
         result_table = "Results\nOption       | Count | %\n"
         result_table += "-" * 30 + "\n"
         
+        longest_option_length = 0
+        for option in quiz_instance.votes:
+            longest_option_length = max(len(str(option)), longest_option_length)
+
         for option in quiz_instance.votes:
             if isinstance(quiz_instance.votes[option], int):  # Ensure it's an integer
                 vote_count = quiz_instance.votes[option]
                 percentage = (vote_count / total_votes * 100) if total_votes > 0 else 0
-                result_table += f"{option.ljust(12)} | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
+                result_table += f"{option.ljust(longest_option_length)} | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
         
         await ctx.send(f"```{result_table}```")
     
