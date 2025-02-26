@@ -173,8 +173,8 @@ async def send_question(ctx, quiz_instance):
 async def next_question(ctx):
     channel_id = ctx.channel.id
     if channel_id not in quizzes:
-        await ctx.send("No quiz is currently running in this channel. \
-                       Use `!start_quiz <quiz_name>` to start a quiz.")
+        await ctx.send("No quiz is currently running in this channel. " \
+                       "Use `!start_quiz <quiz_name>` to start a quiz.")
         return
 
     quiz_instance = quizzes[channel_id]
