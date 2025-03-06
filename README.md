@@ -22,7 +22,7 @@ This is a Discord bot designed to facilitate interactive quizzes within a Discor
 
 ### Prerequisites
 
--   Python 3.8 or higher
+-   Python between and including 3.8 -- 3.11
     
 -   A Discord bot token
     
