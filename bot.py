@@ -22,14 +22,14 @@ MIN_OPTION_LENGTH = 6
 # Load quiz data from a JSON file
 def load_quiz_data():
     if os.path.exists("quiz_data.json"):  # Check if the file exists
-        with open("quiz_data.json", "r") as file:
+        with open("quiz_data.json", "r", encoding="utf-8") as file:
             return json.load(file)  # Load and return the JSON data
     return {}
 
 
 # Save quiz data to the JSON file
 def save_quiz_data():
-    with open("quiz_data.json", "w") as file:
+    with open("quiz_data.json", "w", encoding="utf-8") as file:
         json.dump(quiz_data, file, indent=4)
 
 
@@ -53,6 +53,7 @@ class Quiz:
             0  # Store the number of votes for the current question
         )
         self.votes_message = None  # Store the message displaying the number of votes
+        self.last_message_id = None  # Store the last message ID
 
     # Get the current question based on the index
     def get_current_question(self):
@@ -127,7 +128,11 @@ class QuizButton(Button):
 
 
 @bot.command()
-async def start_quiz(ctx, quiz_name: str, allow_multiple_answers: bool = False):
+async def start_quiz(ctx: commands.Context, quiz_name: str, allow_multiple_answers: str = "false"):
+    """Start a quiz with the given name. Set allow_multiple_answers to 'true' for multiple choice."""
+    # Convert string to boolean
+    multiple_answers = allow_multiple_answers.lower() in ("true", "yes", "1")
+    
     if quiz_name not in quiz_data:  # Check if the quiz exists
         await ctx.send("Quiz not found.")
         return
@@ -138,11 +143,11 @@ async def start_quiz(ctx, quiz_name: str, allow_multiple_answers: bool = False):
         return
 
     # Create a new Quiz instance and store it
-    quizzes[channel_id] = Quiz(quiz_name, ctx.author.id, allow_multiple_answers)
+    quizzes[channel_id] = Quiz(quiz_name, ctx.author.id, multiple_answers)
     await send_question(ctx, quizzes[channel_id])  # Send the first question
 
 
-async def send_question(ctx, quiz_instance):
+async def send_question(ctx: commands.Context, quiz_instance: Quiz):
     quiz_instance.current_question_index += 1
 
     # Check if the quiz has ended
@@ -184,7 +189,7 @@ async def send_question(ctx, quiz_instance):
 
 
 @bot.command()
-async def next_question(ctx):
+async def next_question(ctx: commands.Context):
     channel_id = ctx.channel.id
     if channel_id not in quizzes:
         await ctx.send(
@@ -259,7 +264,7 @@ async def next_question(ctx):
 
 # Command to upload a new quiz via a JSON file
 @bot.command()
-async def upload_quiz(ctx):
+async def upload_quiz(ctx: commands.Context):
     if not ctx.message.attachments:
         await ctx.send("Please attach a JSON file with the quiz data.")
         return
@@ -286,14 +291,15 @@ async def upload_quiz(ctx):
 
 # Command to forcefully quit a quiz
 @bot.command()
-async def force_quit(ctx):
+async def force_quit(ctx: commands.Context):
     channel_id = ctx.channel.id
 
     # Check if the user has "Manage Messages" permission or is the bot owner
-    if (
-        not ctx.author.guild_permissions.manage_messages
-        and ctx.author.id != bot.owner_id
-    ):
+    has_permission = (
+        hasattr(ctx.author, 'guild_permissions') and 
+        ctx.author.guild_permissions.manage_messages
+    )
+    if not has_permission and ctx.author.id != bot.owner_id:
         await ctx.send(
             "You do not have permission to force quit quizzes in this channel."
         )
@@ -308,4 +314,7 @@ async def force_quit(ctx):
 
 # Start the bot
 print("Started")
-bot.run(os.getenv("DISCORD_TOKEN"))
+token = os.getenv("DISCORD_TOKEN")
+if token is None:
+    raise ValueError("DISCORD_TOKEN environment variable is not set")
+bot.run(token)
