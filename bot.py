@@ -1,3 +1,4 @@
+"""Discord Quiz Bot - Interactive quiz system for Discord servers."""
 import os
 import json
 import discord
@@ -19,16 +20,16 @@ MAX_OPTION_LENGTH = 15
 MIN_OPTION_LENGTH = 6
 
 
-# Load quiz data from a JSON file
 def load_quiz_data():
+    """Load quiz data from a JSON file."""
     if os.path.exists("quiz_data.json"):  # Check if the file exists
         with open("quiz_data.json", "r", encoding="utf-8") as file:
             return json.load(file)  # Load and return the JSON data
     return {}
 
 
-# Save quiz data to the JSON file
 def save_quiz_data():
+    """Save quiz data to the JSON file."""
     with open("quiz_data.json", "w", encoding="utf-8") as file:
         json.dump(quiz_data, file, indent=4)
 
@@ -40,6 +41,7 @@ quizzes = {}
 
 
 class Quiz:
+    """Represents a quiz instance with questions, votes, and state tracking."""
     def __init__(self, quiz_name, quiz_starter_id, allow_multiple_answers=False):
         self.quiz_name = quiz_name  # Name of the quiz
         self.quiz_starter_id = quiz_starter_id  # ID of the user who started the quiz
@@ -55,15 +57,15 @@ class Quiz:
         self.votes_message = None  # Store the message displaying the number of votes
         self.last_message_id = None  # Store the last message ID
 
-    # Get the current question based on the index
     def get_current_question(self):
+        """Get the current question based on the index."""
         if self.current_question_index < len(quiz_data[self.quiz_name]["questions"]):
             return quiz_data[self.quiz_name]["questions"][self.current_question_index]
         return None
 
 
-# Custom View to display quiz buttons
 class QuizView(View):
+    """Custom View to display quiz buttons."""
     def __init__(self, options, quiz_instance):
         super().__init__()
         self.options = options
@@ -72,8 +74,8 @@ class QuizView(View):
             self.add_item(QuizButton(label=option, parent_view=self))
 
 
-# Custom Button for quiz options
 class QuizButton(Button):
+    """Custom Button for quiz options."""
     def __init__(self, label, parent_view):
         super().__init__(label=label, style=discord.ButtonStyle.primary)
         self.parent_view = parent_view
@@ -128,11 +130,17 @@ class QuizButton(Button):
 
 
 @bot.command()
-async def start_quiz(ctx: commands.Context, quiz_name: str, allow_multiple_answers: str = "false"):
-    """Start a quiz with the given name. Set allow_multiple_answers to 'true' for multiple choice."""
+async def start_quiz(
+        ctx: commands.Context,
+        quiz_name: str,
+        allow_multiple_answers: str = "false"
+    ):
+    """
+    Start a quiz with the given name.
+    Set allow_multiple_answers to 'true' for multiple choice.
+    """
     # Convert string to boolean
     multiple_answers = allow_multiple_answers.lower() in ("true", "yes", "1")
-    
     if quiz_name not in quiz_data:  # Check if the quiz exists
         await ctx.send("Quiz not found.")
         return
@@ -148,6 +156,7 @@ async def start_quiz(ctx: commands.Context, quiz_name: str, allow_multiple_answe
 
 
 async def send_question(ctx: commands.Context, quiz_instance: Quiz):
+    """Send the next question in the quiz to the channel."""
     quiz_instance.current_question_index += 1
 
     # Check if the quiz has ended
@@ -190,6 +199,7 @@ async def send_question(ctx: commands.Context, quiz_instance: Quiz):
 
 @bot.command()
 async def next_question(ctx: commands.Context):
+    """Move to the next question in the quiz."""
     channel_id = ctx.channel.id
     if channel_id not in quizzes:
         await ctx.send(
@@ -262,9 +272,9 @@ async def next_question(ctx: commands.Context):
     await send_question(ctx, quiz_instance)
 
 
-# Command to upload a new quiz via a JSON file
 @bot.command()
 async def upload_quiz(ctx: commands.Context):
+    """Upload a new quiz via a JSON file attachment."""
     if not ctx.message.attachments:
         await ctx.send("Please attach a JSON file with the quiz data.")
         return
@@ -289,14 +299,14 @@ async def upload_quiz(ctx: commands.Context):
     await ctx.send("Quiz data uploaded and updated successfully!")
 
 
-# Command to forcefully quit a quiz
 @bot.command()
 async def force_quit(ctx: commands.Context):
+    """Forcefully quit any active quiz in the channel."""
     channel_id = ctx.channel.id
 
     # Check if the user has "Manage Messages" permission or is the bot owner
     has_permission = (
-        hasattr(ctx.author, 'guild_permissions') and 
+        hasattr(ctx.author, 'guild_permissions') and
         ctx.author.guild_permissions.manage_messages
     )
     if not has_permission and ctx.author.id != bot.owner_id:
