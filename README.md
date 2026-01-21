@@ -3,68 +3,65 @@
 [![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/Michaelrbparker)
 
 ##
+
 This is a Discord bot designed to facilitate interactive quizzes within a Discord server. The bot allows users to start quizzes, answer questions, and view results in real-time. It supports multiple quizzes, each defined by a JSON file, and provides a user-friendly interface for managing and participating in quizzes.
 
 ## Features
 
--   **Start Quizzes**: Users can start a quiz by specifying the quiz name.
-    
--   **Multiple Quizzes**: The bot supports multiple quizzes, each with its own set of questions and options.
-    
--   **Interactive Buttons**: Users can vote on quiz questions using interactive buttons.
-    
--   **Real-Time Results**: The bot displays real-time results after each question.
-    
--   **Quiz Upload**: Admins can upload new quizzes via JSON files.
-    
+- **Start Quizzes**: Users can start a quiz by specifying the quiz name.
+
+- **Multiple Quizzes**: The bot supports multiple quizzes, each with its own set of questions and options.
+
+- **Interactive Buttons**: Users can vote on quiz questions using interactive buttons.
+
+- **Real-Time Results**: The bot displays real-time results after each question.
+
+- **Quiz Upload**: Admins can upload new quizzes via JSON files.
 
 ## Setup
 
 ### Prerequisites
 
--   Python between and including 3.8 -- 3.11
-    
--   A Discord bot token
-    
--   `py-cord` library
-    
--   `python-dotenv` library
-    
+- Python between and including 3.8 -- 3.11
+
+- A Discord bot token
+
+- `py-cord` library
+
+- `python-dotenv` library
 
 ### Installation
 
-1.  **Clone the Repository**:
-    
-    ```
+1. **Clone the Repository**:
+
+    ```bash
     git clone https://github.com/micfun123/Better-Discord-Quiz-Bot.git
     cd Better-Discord-Quiz-Bot
     ```
-    
-2.  **Install Dependencies**:
 
-    `pip install -r requirements.txt` 
-    
-3.  **Set Up Environment Variables**:  
-    Create a `.env` file in the root directory and add your Discord bot token:   
-    ` DISCORD_TOKEN=your_discord_bot_token_here` 
-    
-4.  **Run the Bot**:
-      
-    `python bot.py` 
-    
+2. **Install Dependencies**:
+
+    `pip install -r requirements.txt`
+
+3. **Set Up Environment Variables**:  
+    Create a `.env` file in the root directory and add your Discord bot token:
+    `DISCORD_TOKEN=your_discord_bot_token_here`
+
+4. **Run the Bot**:
+
+    `python bot.py`
 
 ## Usage
 
 ### Commands
 
--   **`!start_quiz <quiz_name>`**: Starts a quiz with the specified name. If you want users to be able to select multiple answers use **`!start_quiz <quiz_name> True`**
-    
--   **`!next_question`**: Moves to the next question in the quiz. Only the quiz starter can use this command.
-    
--   **`!upload_quiz`**: Uploads a new quiz via a JSON file attachment.
+- **`!start_quiz <quiz_name>`**: Starts a quiz with the specified name. If you want users to be able to select multiple answers use **`!start_quiz <quiz_name> True`**
 
--   **`!force_quit`**: Ends any quizzes running in that channel.
-    
+- **`!next_question`**: Moves to the next question in the quiz. Only the quiz starter can use this command.
+
+- **`!upload_quiz`**: Uploads a new quiz via a JSON file attachment.
+
+- **`!force_quit`**: Ends any quizzes running in that channel.
 
 ### Quiz JSON Format
 
@@ -89,26 +86,27 @@ Quizzes are defined in JSON files. Each quiz should have the following structure
 
 ### Example
 
-1.  **Start a Quiz**:
-    ```
+1. **Start a Quiz**:
+
+    ```bash
     !start_quiz general_knowledge
     ```
-2.  **Answer Questions**:  
+
+2. **Answer Questions**:  
     The bot will post questions with interactive buttons for each option. Users can click on the buttons to vote.
-    
-3.  **Move to the Next Question**:
-    
-    ```
+
+3. **Move to the Next Question**:
+
+    ```bash
     !next_question 
     ```
-4.  **Upload a New Quiz**:  
+
+4. **Upload a New Quiz**:  
     Attach a JSON file with the quiz data and use the command:
-	
-	   ` !upload_quiz` 
-   
-  
+
+    `!upload_quiz`
 
 ## Contributing
 
-Contributions are welcome! Please fork the repository and submit a pull request with your changes or donations on the Buy Me a Coffee 
+Contributions are welcome! Please fork the repository and submit a pull request with your changes or donations on the Buy Me a Coffee
 [Buy Me A TEA](https://www.buymeacoffee.com/Michaelrbparker)
