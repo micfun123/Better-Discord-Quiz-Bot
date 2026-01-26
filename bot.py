@@ -1,5 +1,4 @@
 """Discord Quiz Bot - Interactive quiz system for Discord servers."""
-
 import os
 import json
 import asyncio
@@ -7,6 +6,7 @@ import discord
 from discord.ext import commands
 from discord.ui import View, Button
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -39,7 +39,6 @@ quizzes = {}
 
 class Quiz:
     """Represents a quiz instance with questions, votes, and state tracking."""
-
     def __init__(self, quiz_name, quiz_starter_id, allow_multiple_answers=False):
         self.quiz_name = quiz_name
         self.quiz_starter_id = quiz_starter_id
@@ -64,16 +63,16 @@ class Quiz:
         """Schedule a batched vote count update to avoid rate limits."""
         if self.pending_vote_update:
             return
-
+        
         self.pending_vote_update = True
         await asyncio.sleep(2.0)
-
+        
         async with self.update_lock:
             current_time = asyncio.get_event_loop().time()
             time_since_last_edit = current_time - self.last_vote_edit_time
             if time_since_last_edit < 2.0:
                 await asyncio.sleep(2.0 - time_since_last_edit)
-
+            
             if self.votes_message:
                 try:
                     await self.votes_message.edit(
@@ -87,7 +86,6 @@ class Quiz:
 
 class QuizView(View):
     """Custom View to display quiz buttons."""
-
     def __init__(self, options, quiz_instance):
         super().__init__(timeout=None)
         self.options = options
@@ -98,7 +96,6 @@ class QuizView(View):
 
 class QuizButton(Button):
     """Custom Button for quiz options."""
-
     def __init__(self, label, parent_view):
         super().__init__(label=label, style=discord.ButtonStyle.primary)
         self.parent_view = parent_view
@@ -152,12 +149,22 @@ class QuizButton(Button):
 
 @bot.command()
 async def start_quiz(
-    ctx: commands.Context, quiz_name: str, allow_multiple_answers: str = "false"
-):
+        ctx: commands.Context,
+        quiz_name: str,
+        allow_multiple_answers: str = "false"
+    ):
     """
     Start a quiz with the given name.
     Set allow_multiple_answers to 'true' for multiple choice.
     """
+    has_permission = (
+        hasattr(ctx.author, 'guild_permissions') and
+        ctx.author.guild_permissions.administrator
+    )
+    if not has_permission and ctx.author.id != bot.owner_id:
+        await ctx.send("You need administrator permissions to start a quiz.")
+        return
+
     multiple_answers = allow_multiple_answers.lower() in ("true", "yes", "1")
     if quiz_name not in quiz_data:
         await ctx.send("Quiz not found.")
@@ -277,6 +284,14 @@ async def next_question(ctx: commands.Context):
 @bot.command()
 async def upload_quiz(ctx: commands.Context):
     """Upload a new quiz via a JSON file attachment."""
+    has_permission = (
+        hasattr(ctx.author, 'guild_permissions') and
+        ctx.author.guild_permissions.administrator
+    )
+    if not has_permission and ctx.author.id != bot.owner_id:
+        await ctx.send("You need administrator permissions to upload quizzes.")
+        return
+
     if not ctx.message.attachments:
         await ctx.send("Please attach a JSON file with the quiz data.")
         return
@@ -306,8 +321,8 @@ async def force_quit(ctx: commands.Context):
     channel_id = ctx.channel.id
 
     has_permission = (
-        hasattr(ctx.author, "guild_permissions")
-        and ctx.author.guild_permissions.manage_messages
+        hasattr(ctx.author, 'guild_permissions') and
+        ctx.author.guild_permissions.manage_messages
     )
     if not has_permission and ctx.author.id != bot.owner_id:
         await ctx.send(
