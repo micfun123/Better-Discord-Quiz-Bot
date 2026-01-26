@@ -1,11 +1,12 @@
 """Discord Quiz Bot - Interactive quiz system for Discord servers."""
+
 import os
 import json
+import asyncio
 import discord
 from discord.ext import commands
 from discord.ui import View, Button
 from dotenv import load_dotenv
-
 
 load_dotenv()
 
@@ -14,17 +15,15 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Max option length for results table
 MAX_OPTION_LENGTH = 15
-# Minimum option length for results table, 6 to match "Option "
 MIN_OPTION_LENGTH = 6
 
 
 def load_quiz_data():
     """Load quiz data from a JSON file."""
-    if os.path.exists("quiz_data.json"):  # Check if the file exists
+    if os.path.exists("quiz_data.json"):
         with open("quiz_data.json", "r", encoding="utf-8") as file:
-            return json.load(file)  # Load and return the JSON data
+            return json.load(file)
     return {}
 
 
@@ -35,27 +34,25 @@ def save_quiz_data():
 
 
 quiz_data = load_quiz_data()
-
-# Dictionary to store active quizzes by channel ID
 quizzes = {}
 
 
 class Quiz:
     """Represents a quiz instance with questions, votes, and state tracking."""
+
     def __init__(self, quiz_name, quiz_starter_id, allow_multiple_answers=False):
-        self.quiz_name = quiz_name  # Name of the quiz
-        self.quiz_starter_id = quiz_starter_id  # ID of the user who started the quiz
-        self.current_question_index = -1  # Track the current question index
-        self.votes = {}  # Store votes for each option
-        self.allow_multiple_answers = (
-            allow_multiple_answers  # Allow multiple answers per user
-        )
-        self.current_view = None  # Store the current View (buttons) for the quiz
-        self.current_question_votes = (
-            0  # Store the number of votes for the current question
-        )
-        self.votes_message = None  # Store the message displaying the number of votes
-        self.last_message_id = None  # Store the last message ID
+        self.quiz_name = quiz_name
+        self.quiz_starter_id = quiz_starter_id
+        self.current_question_index = -1
+        self.votes = {}
+        self.allow_multiple_answers = allow_multiple_answers
+        self.current_view = None
+        self.current_question_votes = 0
+        self.votes_message = None
+        self.last_message_id = None
+        self.pending_vote_update = False
+        self.update_lock = asyncio.Lock()
+        self.last_vote_edit_time = 0
 
     def get_current_question(self):
         """Get the current question based on the index."""
@@ -63,103 +60,122 @@ class Quiz:
             return quiz_data[self.quiz_name]["questions"][self.current_question_index]
         return None
 
+    async def schedule_vote_update(self):
+        """Schedule a batched vote count update to avoid rate limits."""
+        if self.pending_vote_update:
+            return
+
+        self.pending_vote_update = True
+        await asyncio.sleep(2.0)
+
+        async with self.update_lock:
+            current_time = asyncio.get_event_loop().time()
+            time_since_last_edit = current_time - self.last_vote_edit_time
+            if time_since_last_edit < 2.0:
+                await asyncio.sleep(2.0 - time_since_last_edit)
+
+            if self.votes_message:
+                try:
+                    await self.votes_message.edit(
+                        content=f"Votes: {self.current_question_votes}"
+                    )
+                    self.last_vote_edit_time = asyncio.get_event_loop().time()
+                except discord.HTTPException:
+                    pass
+            self.pending_vote_update = False
+
 
 class QuizView(View):
     """Custom View to display quiz buttons."""
+
     def __init__(self, options, quiz_instance):
-        super().__init__()
+        super().__init__(timeout=None)
         self.options = options
-        self.quiz_instance = quiz_instance  # Reference to the Quiz instance
+        self.quiz_instance = quiz_instance
         for option in options:
             self.add_item(QuizButton(label=option, parent_view=self))
 
 
 class QuizButton(Button):
     """Custom Button for quiz options."""
+
     def __init__(self, label, parent_view):
         super().__init__(label=label, style=discord.ButtonStyle.primary)
         self.parent_view = parent_view
 
-    # Callback when a button is clicked
     async def callback(self, interaction: discord.Interaction):
         user_id = interaction.user.id
         quiz_instance = self.parent_view.quiz_instance
 
-        # Handle multiple answers if allowed
         if quiz_instance.allow_multiple_answers:
             if user_id not in quiz_instance.votes:
                 quiz_instance.votes[user_id] = set()
 
-            # Toggle the vote for the selected option
             if self.label in quiz_instance.votes[user_id]:
                 quiz_instance.votes[user_id].remove(self.label)
                 quiz_instance.votes[self.label] = (
                     quiz_instance.votes.get(self.label, 0) - 1
                 )
+                response_text = f"❌ Removed vote for **{self.label}**"
             else:
                 quiz_instance.votes[user_id].add(self.label)
                 quiz_instance.votes[self.label] = (
                     quiz_instance.votes.get(self.label, 0) + 1
                 )
+                response_text = f"✅ Voted for **{self.label}**"
         else:
-            # Handle single answer per user
             if user_id in quiz_instance.votes:
                 prev_vote = quiz_instance.votes[user_id]
                 if isinstance(prev_vote, str):
-                    quiz_instance.votes[prev_vote] -= 1  # Remove the previous vote
+                    quiz_instance.votes[prev_vote] -= 1
 
-            # Record the new vote
             quiz_instance.votes[user_id] = self.label
             quiz_instance.votes[self.label] = quiz_instance.votes.get(self.label, 0) + 1
+            response_text = f"✅ Voted for **{self.label}**"
 
-        # Update the total number of votes for the current question
         quiz_instance.current_question_votes = sum(
             v for v in quiz_instance.votes.values() if isinstance(v, int)
         )
 
-        # Update the votes message
-        if quiz_instance.votes_message:
-            await quiz_instance.votes_message.edit(
-                content=f"Votes: {quiz_instance.current_question_votes}"
-            )
+        asyncio.create_task(quiz_instance.schedule_vote_update())
 
-        # Send a confirmation message to the user
-        await interaction.response.send_message(
-            f"You voted for {self.label}", ephemeral=True
-        )
+        # Send ephemeral response but suppress errors if rate limited
+        try:
+            await interaction.response.send_message(response_text, ephemeral=True)
+        except discord.HTTPException:
+            # If rate limited, just acknowledge without message
+            try:
+                await interaction.response.defer(ephemeral=True, thinking=False)
+            except:
+                pass
 
 
 @bot.command()
 async def start_quiz(
-        ctx: commands.Context,
-        quiz_name: str,
-        allow_multiple_answers: str = "false"
-    ):
+    ctx: commands.Context, quiz_name: str, allow_multiple_answers: str = "false"
+):
     """
     Start a quiz with the given name.
     Set allow_multiple_answers to 'true' for multiple choice.
     """
-    # Convert string to boolean
     multiple_answers = allow_multiple_answers.lower() in ("true", "yes", "1")
-    if quiz_name not in quiz_data:  # Check if the quiz exists
+    if quiz_name not in quiz_data:
         await ctx.send("Quiz not found.")
         return
 
     channel_id = ctx.channel.id
-    if channel_id in quizzes:  # Check if a quiz is already running in the channel
+    if channel_id in quizzes:
         await ctx.send("A quiz is already running in this channel.")
         return
 
-    # Create a new Quiz instance and store it
     quizzes[channel_id] = Quiz(quiz_name, ctx.author.id, multiple_answers)
-    await send_question(ctx, quizzes[channel_id])  # Send the first question
+    await send_question(ctx, quizzes[channel_id])
 
 
 async def send_question(ctx: commands.Context, quiz_instance: Quiz):
     """Send the next question in the quiz to the channel."""
     quiz_instance.current_question_index += 1
 
-    # Check if the quiz has ended
     if quiz_instance.current_question_index >= len(
         quiz_data[quiz_instance.quiz_name]["questions"]
     ):
@@ -167,7 +183,6 @@ async def send_question(ctx: commands.Context, quiz_instance: Quiz):
         del quizzes[ctx.channel.id]
         return
 
-    # Get the current question data
     question_data = quiz_instance.get_current_question()
     question = (
         question_data["question"]
@@ -181,11 +196,10 @@ async def send_question(ctx: commands.Context, quiz_instance: Quiz):
         await ctx.send("You need at least two options.")
         return
 
-    # Reset votes for the new question
     quiz_instance.votes = {option: 0 for option in options}
     quiz_instance.current_question_votes = 0
     view = QuizView(options, quiz_instance)
-    quiz_instance.current_view = view  # Store the View for later use
+    quiz_instance.current_view = view
 
     message = await ctx.send(
         f"**Question {quiz_instance.current_question_index + 1}: {question}**",
@@ -210,33 +224,26 @@ async def next_question(ctx: commands.Context):
 
     quiz_instance = quizzes[channel_id]
 
-    # Ensure only the quiz starter can move to the next question
     if ctx.author.id != quiz_instance.quiz_starter_id:
         await ctx.send("Only the quiz starter can move to the next question.")
         return
 
-    # Disable the buttons in the previous question's message
-    if hasattr(quiz_instance, "last_message_id"):
+    if hasattr(quiz_instance, "last_message_id") and quiz_instance.current_view:
         try:
+            await asyncio.sleep(1.0)
             previous_message = await ctx.channel.fetch_message(
                 quiz_instance.last_message_id
             )
             if previous_message:
                 for item in quiz_instance.current_view.children:
                     item.disabled = True
-                await previous_message.edit(
-                    view=quiz_instance.current_view
-                )  # Edit the message to disable buttons
-        except discord.NotFound:
-            await ctx.send("Could not find the previous message to disable buttons.")
-        except discord.Forbidden:
-            await ctx.send("I don't have permission to edit the previous message.")
+                await previous_message.edit(view=quiz_instance.current_view)
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+            pass
 
-    # Display results if at least one question has been asked
     if quiz_instance.current_question_index >= 0:
         total_votes = sum(v for v in quiz_instance.votes.values() if isinstance(v, int))
 
-        # Find longest quiz option (for result table formatting)
         longest_option_length = MIN_OPTION_LENGTH
         for option in quiz_instance.votes:
             if isinstance(quiz_instance.votes[option], int):
@@ -245,9 +252,7 @@ async def next_question(ctx: commands.Context):
                     longest_option_length = MAX_OPTION_LENGTH
                     break
 
-        # Spaces for option portion of table
         option_spaces = max(MIN_OPTION_LENGTH, longest_option_length)
-        # Build header + seperator based on option length
         result_table = (
             "Results\nOption "
             + " " * max(longest_option_length - MIN_OPTION_LENGTH, 0)
@@ -260,15 +265,12 @@ async def next_question(ctx: commands.Context):
                 vote_count = quiz_instance.votes[option]
                 percentage = (vote_count / total_votes * 100) if total_votes > 0 else 0
                 if len(option) > MAX_OPTION_LENGTH:
-                    option = (
-                        option[: MAX_OPTION_LENGTH - 3] + "..."
-                    )  # Truncate long options
+                    option = option[: MAX_OPTION_LENGTH - 3] + "..."
                 result_table += f"{option.ljust(option_spaces)}"
                 result_table += f" | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
 
         await ctx.send(f"```{result_table}```")
 
-    # Move to the next question
     await send_question(ctx, quiz_instance)
 
 
@@ -286,16 +288,15 @@ async def upload_quiz(ctx: commands.Context):
 
     file_content = await attachment.read()
     try:
-        new_quiz_data = json.loads(file_content)  # Parse the JSON data
+        new_quiz_data = json.loads(file_content)
     except json.JSONDecodeError:
         await ctx.send("Invalid JSON file.")
         return
 
-    # Update the quiz data with the new content
     for quiz_name, quiz_content in new_quiz_data.items():
         quiz_data[quiz_name] = quiz_content
 
-    save_quiz_data()  # Save the updated quiz data to the file
+    save_quiz_data()
     await ctx.send("Quiz data uploaded and updated successfully!")
 
 
@@ -304,10 +305,9 @@ async def force_quit(ctx: commands.Context):
     """Forcefully quit any active quiz in the channel."""
     channel_id = ctx.channel.id
 
-    # Check if the user has "Manage Messages" permission or is the bot owner
     has_permission = (
-        hasattr(ctx.author, 'guild_permissions') and
-        ctx.author.guild_permissions.manage_messages
+        hasattr(ctx.author, "guild_permissions")
+        and ctx.author.guild_permissions.manage_messages
     )
     if not has_permission and ctx.author.id != bot.owner_id:
         await ctx.send(
@@ -315,14 +315,13 @@ async def force_quit(ctx: commands.Context):
         )
         return
 
-    if channel_id in quizzes:  # Check if a quiz is running in the channel
-        del quizzes[channel_id]  # Remove the quiz
+    if channel_id in quizzes:
+        del quizzes[channel_id]
         await ctx.send("All quizzes in this channel have been forcefully ended.")
     else:
         await ctx.send("No active quiz in this channel.")
 
 
-# Start the bot
 print("Started")
 token = os.getenv("DISCORD_TOKEN")
 if token is None:
