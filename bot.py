@@ -168,9 +168,10 @@ class QuizSelect(discord.ui.Select[QuizButtonView]):
                 content=f"Votes: {quiz_instance.current_question_votes}"
             )
 
+        opt_str = ", ".join(opt for opt in select_options)
         # Send a confirmation message to the user
         await interaction.followup.send(
-            content=f"You voted for {','.join(opt for opt in select_options)}",
+            content=f"You voted for {opt_str}",
             ephemeral=True,
         )
 
