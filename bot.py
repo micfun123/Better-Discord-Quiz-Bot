@@ -1,4 +1,5 @@
 """Discord Quiz Bot - Interactive quiz system for Discord servers."""
+
 import os
 import json
 import discord
@@ -42,6 +43,7 @@ quizzes = {}
 
 class Quiz:
     """Represents a quiz instance with questions, votes, and state tracking."""
+
     def __init__(self, quiz_name, quiz_starter_id, allow_multiple_answers=False):
         self.quiz_name = quiz_name  # Name of the quiz
         self.quiz_starter_id = quiz_starter_id  # ID of the user who started the quiz
@@ -66,6 +68,7 @@ class Quiz:
 
 class QuizView(View):
     """Custom View to display quiz buttons."""
+
     def __init__(self, options, quiz_instance):
         super().__init__()
         self.options = options
@@ -76,6 +79,7 @@ class QuizView(View):
 
 class QuizButton(Button):
     """Custom Button for quiz options."""
+
     def __init__(self, label, parent_view):
         super().__init__(label=label, style=discord.ButtonStyle.primary)
         self.parent_view = parent_view
@@ -131,10 +135,8 @@ class QuizButton(Button):
 
 @bot.command()
 async def start_quiz(
-        ctx: commands.Context,
-        quiz_name: str,
-        allow_multiple_answers: str = "false"
-    ):
+    ctx: commands.Context, quiz_name: str, allow_multiple_answers: str = "false"
+):
     """
     Start a quiz with the given name.
     Set allow_multiple_answers to 'true' for multiple choice.
@@ -306,8 +308,8 @@ async def force_quit(ctx: commands.Context):
 
     # Check if the user has "Manage Messages" permission or is the bot owner
     has_permission = (
-        hasattr(ctx.author, 'guild_permissions') and
-        ctx.author.guild_permissions.manage_messages
+        hasattr(ctx.author, "guild_permissions")
+        and ctx.author.guild_permissions.manage_messages
     )
     if not has_permission and ctx.author.id != bot.owner_id:
         await ctx.send(
