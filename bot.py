@@ -115,7 +115,6 @@ class QuizSelectView(View):
         self.options = options
         self.quiz_instance = quiz_instance  # Reference to the Quiz instance
 
-        max_values = len(options) if quiz_instance.allow_multiple_answers else 1
         self.add_item(
             QuizSelect(
                 [SelectOption(label=opt) for opt in options],
@@ -192,32 +191,14 @@ class QuizButton(Button[QuizButtonView]):
         user_id = interaction.user.id
         quiz_instance = self.parent_view.quiz_instance
 
-        # Handle multiple answers if allowed
-        if quiz_instance.allow_multiple_answers:
-            if user_id not in quiz_instance.user_votes:
-                quiz_instance.user_votes[user_id] = set()
+        if user_id in quiz_instance.user_votes:
+            quiz_instance.user_votes.pop(user_id)
 
-            # Toggle the vote for the selected option
-            if self.label in quiz_instance.user_votes[user_id]:
-                quiz_instance.user_votes[user_id].remove(self.label)
-                quiz_instance.answer_votes[self.label] = (
-                    quiz_instance.answer_votes.get(self.label, 0) - 1
-                )
-            else:
-                quiz_instance.user_votes[user_id].add(self.label)
-                quiz_instance.answer_votes[self.label] = (
-                    quiz_instance.answer_votes.get(self.label, 0) + 1
-                )
-        else:
-            # Handle single answer per user
-            if user_id in quiz_instance.user_votes:
-                quiz_instance.user_votes.pop(user_id)
-
-            # Record the new vote
-            quiz_instance.user_votes[user_id] = {self.label}
-            quiz_instance.answer_votes[self.label] = (
-                quiz_instance.answer_votes.get(self.label, 0) + 1
-            )
+        # Record the new vote
+        quiz_instance.user_votes[user_id] = {self.label}
+        quiz_instance.answer_votes[self.label] = (
+            quiz_instance.answer_votes.get(self.label, 0) + 1
+        )
 
         # Update the total number of votes for the current question
         quiz_instance.current_question_votes = sum(
@@ -333,7 +314,10 @@ async def send_question(interaction: discord.Interaction, quiz_instance: Quiz):
     # Reset votes for the new question
     quiz_instance.answer_votes = {option: 0 for option in options}
     quiz_instance.current_question_votes = 0
-    view = QuizSelectView(options, quiz_instance)
+    if quiz_instance.allow_multiple_answers:
+        view = QuizSelectView(options, quiz_instance)
+    else:
+        view = QuizButtonView(options, quiz_instance)
     quiz_instance.current_view = view  # Store the View for later use
 
     content = f"**Question {quiz_instance.current_question_index + 1}: {question}**"
