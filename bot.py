@@ -8,7 +8,12 @@ import os
 from typing import TypedDict
 
 import discord
-from discord import Interaction, InteractionMessage, app_commands
+from discord import (
+    Interaction,
+    InteractionMessage,
+    SelectOption,
+    app_commands,
+)
 from discord.ext import commands
 from discord.ui import Button, View
 from dotenv import load_dotenv
@@ -74,7 +79,7 @@ class Quiz:
         self.allow_multiple_answers: bool = (
             allow_multiple_answers  # Allow multiple answers per user
         )
-        self.current_view: QuizView | None = (
+        self.current_view: View | None = (
             None  # Store the current View (buttons) for the quiz
         )
         self.current_question_votes = (
@@ -92,21 +97,89 @@ class Quiz:
         return None
 
 
-class QuizView(View):
+class QuizButtonView(View):
     """Custom View to display quiz buttons."""
 
     def __init__(self, options: list[str], quiz_instance: Quiz) -> None:
         super().__init__()
         self.options = options
         self.quiz_instance = quiz_instance  # Reference to the Quiz instance
+
         for option in options:
             self.add_item(QuizButton(label=option, parent_view=self))
 
 
-class QuizButton(Button[QuizView]):
+class QuizSelectView(View):
+    def __init__(self, options: list[str], quiz_instance: Quiz) -> None:
+        super().__init__()
+        self.options = options
+        self.quiz_instance = quiz_instance  # Reference to the Quiz instance
+
+        max_values = len(options) if quiz_instance.allow_multiple_answers else 1
+        self.add_item(
+            QuizSelect(
+                [SelectOption(label=opt) for opt in options],
+                len(options),
+                quiz_instance,
+            )
+        )
+
+
+class QuizSelect(discord.ui.Select[QuizButtonView]):
+    def __init__(
+        self, options: list[SelectOption], max_values: int, quiz_instance: Quiz
+    ) -> None:
+        super().__init__(
+            placeholder="Select all that apply",
+            min_values=1,
+            max_values=max_values,
+            options=options,
+        )
+        self.quiz_instance: Quiz = quiz_instance
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        assert interaction.data and "values" in interaction.data, (
+            "Invalid data type returned"
+        )
+        select_options = interaction.data["values"]
+
+        user_id = interaction.user.id
+        quiz_instance = self.quiz_instance
+
+        # Reset existing answer_votes
+        user_votes = quiz_instance.user_votes[user_id]
+        for opt in user_votes:
+            quiz_instance.answer_votes[opt] -= 1
+
+        # Update votes with new selection
+        quiz_instance.user_votes[user_id] = {opt for opt in select_options}
+        for opt in select_options:
+            quiz_instance.answer_votes[opt] += 1
+
+        # Update the total number of votes for the current question
+        quiz_instance.current_question_votes = sum(
+            v for v in quiz_instance.answer_votes.values()
+        )
+
+        # Update the votes message
+        if quiz_instance.votes_message:
+            await quiz_instance.votes_message.edit(
+                content=f"Votes: {quiz_instance.current_question_votes}"
+            )
+
+        # Send a confirmation message to the user
+        await interaction.followup.send(
+            content=f"You voted for {','.join(opt for opt in select_options)}",
+            ephemeral=True,
+        )
+
+
+class QuizButton(Button[QuizButtonView]):
     """Custom Button for quiz options."""
 
-    def __init__(self, label: str, parent_view: QuizView) -> None:
+    def __init__(self, label: str, parent_view: QuizButtonView) -> None:
         super().__init__(label=label, style=discord.ButtonStyle.primary)
         self.parent_view = parent_view
 
@@ -260,7 +333,7 @@ async def send_question(interaction: discord.Interaction, quiz_instance: Quiz):
     # Reset votes for the new question
     quiz_instance.answer_votes = {option: 0 for option in options}
     quiz_instance.current_question_votes = 0
-    view = QuizView(options, quiz_instance)
+    view = QuizSelectView(options, quiz_instance)
     quiz_instance.current_view = view  # Store the View for later use
 
     content = f"**Question {quiz_instance.current_question_index + 1}: {question}**"
