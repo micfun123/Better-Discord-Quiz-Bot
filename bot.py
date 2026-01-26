@@ -5,6 +5,7 @@
 import json
 import logging
 import os
+from string import ascii_uppercase
 from typing import TypedDict
 
 import discord
@@ -17,7 +18,6 @@ from discord import (
 from discord.ext import commands
 from discord.ui import Button, View
 from dotenv import load_dotenv
-
 
 log = logging.getLogger()
 load_dotenv()
@@ -307,10 +307,16 @@ async def send_question(interaction: discord.Interaction, quiz_instance: Quiz):
         .replace("\t", " ")
     )
     options = question_data["options"]
-
     if len(options) < 2:
         await interaction.followup.send("You need at least two options.")
         return
+
+    answers = ""
+    if any(len(opt) > 80 for opt in options):
+        answers = "\n".join(
+            f"**{c}.** {opt}" for c, opt in zip(ascii_uppercase, options)
+        )
+        options = list(ascii_uppercase[: len(options)])
 
     # Reset votes for the new question
     quiz_instance.answer_votes = {option: 0 for option in options}
@@ -321,7 +327,7 @@ async def send_question(interaction: discord.Interaction, quiz_instance: Quiz):
         view = QuizButtonView(options, quiz_instance)
     quiz_instance.current_view = view  # Store the View for later use
 
-    content = f"**Question {quiz_instance.current_question_index + 1}: {question}**"
+    content = f"**Question {quiz_instance.current_question_index + 1}: {question}**\n\n{answers}"
     if interaction.response.is_done():
         message = await interaction.followup.send(
             content,
