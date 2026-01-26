@@ -148,7 +148,7 @@ class QuizSelect(discord.ui.Select[QuizButtonView]):
         quiz_instance = self.quiz_instance
 
         # Reset existing answer_votes
-        user_votes = quiz_instance.user_votes[user_id]
+        user_votes = quiz_instance.user_votes.get(user_id, set())
         for opt in user_votes:
             quiz_instance.answer_votes[opt] -= 1
 
