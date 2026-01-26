@@ -1,11 +1,15 @@
+# pylint: disable=missing-docstring
+
 """Discord Quiz Bot - Interactive quiz system for Discord servers."""
-import os
+
 import json
+import os
+from typing import TypedDict
+
 import discord
 from discord.ext import commands
-from discord.ui import View, Button
+from discord.ui import Button, View
 from dotenv import load_dotenv
-
 
 load_dotenv()
 
@@ -20,7 +24,16 @@ MAX_OPTION_LENGTH = 15
 MIN_OPTION_LENGTH = 6
 
 
-def load_quiz_data():
+class QuizQuestion(TypedDict):
+    question: str
+    options: list[str]
+
+
+class QuizData(TypedDict):
+    questions: list[QuizQuestion]
+
+
+def load_quiz_data() -> dict[str, QuizData]:
     """Load quiz data from a JSON file."""
     if os.path.exists("quiz_data.json"):  # Check if the file exists
         with open("quiz_data.json", "r", encoding="utf-8") as file:
@@ -28,7 +41,7 @@ def load_quiz_data():
     return {}
 
 
-def save_quiz_data():
+def save_quiz_data() -> None:
     """Save quiz data to the JSON file."""
     with open("quiz_data.json", "w", encoding="utf-8") as file:
         json.dump(quiz_data, file, indent=4)
@@ -37,27 +50,37 @@ def save_quiz_data():
 quiz_data = load_quiz_data()
 
 # Dictionary to store active quizzes by channel ID
-quizzes = {}
+quizzes: dict[int, "Quiz"] = {}
 
 
 class Quiz:
     """Represents a quiz instance with questions, votes, and state tracking."""
-    def __init__(self, quiz_name, quiz_starter_id, allow_multiple_answers=False):
-        self.quiz_name = quiz_name  # Name of the quiz
-        self.quiz_starter_id = quiz_starter_id  # ID of the user who started the quiz
+
+    def __init__(
+        self, quiz_name: str, quiz_starter_id: int, allow_multiple_answers: bool = False
+    ):
+        self.quiz_name: str = quiz_name  # Name of the quiz
+        self.quiz_starter_id: int = (
+            quiz_starter_id  # ID of the user who started the quiz
+        )
         self.current_question_index = -1  # Track the current question index
-        self.votes = {}  # Store votes for each option
-        self.allow_multiple_answers = (
+        self.user_votes: dict[int, set[str]] = {}  # Store votes for each option
+        self.answer_votes: dict[str, int] = {}
+        self.allow_multiple_answers: bool = (
             allow_multiple_answers  # Allow multiple answers per user
         )
-        self.current_view = None  # Store the current View (buttons) for the quiz
+        self.current_view: QuizView | None = (
+            None  # Store the current View (buttons) for the quiz
+        )
         self.current_question_votes = (
             0  # Store the number of votes for the current question
         )
-        self.votes_message = None  # Store the message displaying the number of votes
-        self.last_message_id = None  # Store the last message ID
+        self.votes_message: discord.Message | None = (
+            None  # Store the message displaying the number of votes
+        )
+        self.last_message_id: int | None = None  # Store the last message ID
 
-    def get_current_question(self):
+    def get_current_question(self) -> QuizQuestion | None:
         """Get the current question based on the index."""
         if self.current_question_index < len(quiz_data[self.quiz_name]["questions"]):
             return quiz_data[self.quiz_name]["questions"][self.current_question_index]
@@ -66,7 +89,8 @@ class Quiz:
 
 class QuizView(View):
     """Custom View to display quiz buttons."""
-    def __init__(self, options, quiz_instance):
+
+    def __init__(self, options: list[str], quiz_instance: Quiz) -> None:
         super().__init__()
         self.options = options
         self.quiz_instance = quiz_instance  # Reference to the Quiz instance
@@ -74,47 +98,50 @@ class QuizView(View):
             self.add_item(QuizButton(label=option, parent_view=self))
 
 
-class QuizButton(Button):
+class QuizButton(Button[QuizView]):
     """Custom Button for quiz options."""
-    def __init__(self, label, parent_view):
+
+    def __init__(self, label: str, parent_view: QuizView) -> None:
         super().__init__(label=label, style=discord.ButtonStyle.primary)
         self.parent_view = parent_view
 
     # Callback when a button is clicked
     async def callback(self, interaction: discord.Interaction):
+        assert self.label is not None, "'self.label' should not be None"
+
         user_id = interaction.user.id
         quiz_instance = self.parent_view.quiz_instance
 
         # Handle multiple answers if allowed
         if quiz_instance.allow_multiple_answers:
-            if user_id not in quiz_instance.votes:
-                quiz_instance.votes[user_id] = set()
+            if user_id not in quiz_instance.user_votes:
+                quiz_instance.user_votes[user_id] = set()
 
             # Toggle the vote for the selected option
-            if self.label in quiz_instance.votes[user_id]:
-                quiz_instance.votes[user_id].remove(self.label)
-                quiz_instance.votes[self.label] = (
-                    quiz_instance.votes.get(self.label, 0) - 1
+            if self.label in quiz_instance.user_votes[user_id]:
+                quiz_instance.user_votes[user_id].remove(self.label)
+                quiz_instance.answer_votes[self.label] = (
+                    quiz_instance.answer_votes.get(self.label, 0) - 1
                 )
             else:
-                quiz_instance.votes[user_id].add(self.label)
-                quiz_instance.votes[self.label] = (
-                    quiz_instance.votes.get(self.label, 0) + 1
+                quiz_instance.user_votes[user_id].add(self.label)
+                quiz_instance.answer_votes[self.label] = (
+                    quiz_instance.answer_votes.get(self.label, 0) + 1
                 )
         else:
             # Handle single answer per user
-            if user_id in quiz_instance.votes:
-                prev_vote = quiz_instance.votes[user_id]
-                if isinstance(prev_vote, str):
-                    quiz_instance.votes[prev_vote] -= 1  # Remove the previous vote
+            if user_id in quiz_instance.user_votes:
+                quiz_instance.user_votes.pop(user_id)
 
             # Record the new vote
-            quiz_instance.votes[user_id] = self.label
-            quiz_instance.votes[self.label] = quiz_instance.votes.get(self.label, 0) + 1
+            quiz_instance.user_votes[user_id] = {self.label}
+            quiz_instance.answer_votes[self.label] = (
+                quiz_instance.answer_votes.get(self.label, 0) + 1
+            )
 
         # Update the total number of votes for the current question
         quiz_instance.current_question_votes = sum(
-            v for v in quiz_instance.votes.values() if isinstance(v, int)
+            v for v in quiz_instance.user_votes.values() if isinstance(v, int)
         )
 
         # Update the votes message
@@ -129,12 +156,21 @@ class QuizButton(Button):
         )
 
 
+def has_permission(author: discord.User | discord.Member, permission: str) -> bool:
+    has_perm: bool = False
+
+    if isinstance(author, discord.Member):
+        has_perm = getattr(author.guild_permissions, permission, has_perm)
+
+    return has_perm
+
+
 @bot.command()
 async def start_quiz(
-        ctx: commands.Context,
-        quiz_name: str,
-        allow_multiple_answers: str = "false"
-    ):
+    ctx: commands.Context[commands.Bot],
+    quiz_name: str,
+    allow_multiple_answers: str = "false",
+):
     """
     Start a quiz with the given name.
     Set allow_multiple_answers to 'true' for multiple choice.
@@ -155,7 +191,7 @@ async def start_quiz(
     await send_question(ctx, quizzes[channel_id])  # Send the first question
 
 
-async def send_question(ctx: commands.Context, quiz_instance: Quiz):
+async def send_question(ctx: commands.Context[commands.Bot], quiz_instance: Quiz):
     """Send the next question in the quiz to the channel."""
     quiz_instance.current_question_index += 1
 
@@ -169,7 +205,11 @@ async def send_question(ctx: commands.Context, quiz_instance: Quiz):
 
     # Get the current question data
     question_data = quiz_instance.get_current_question()
-    question = (
+    if question_data is None:
+        await ctx.send("[Warn]: End of questions")
+        return
+
+    question: str = (
         question_data["question"]
         .replace("\n", "\n")
         .replace("\r", " ")
@@ -182,7 +222,7 @@ async def send_question(ctx: commands.Context, quiz_instance: Quiz):
         return
 
     # Reset votes for the new question
-    quiz_instance.votes = {option: 0 for option in options}
+    quiz_instance.answer_votes = {option: 0 for option in options}
     quiz_instance.current_question_votes = 0
     view = QuizView(options, quiz_instance)
     quiz_instance.current_view = view  # Store the View for later use
@@ -193,12 +233,12 @@ async def send_question(ctx: commands.Context, quiz_instance: Quiz):
     )
     quiz_instance.last_message_id = message.id
 
-    votes_message = await ctx.send("Votes: 0")
+    votes_message: discord.Message = await ctx.send("Votes: 0")
     quiz_instance.votes_message = votes_message
 
 
 @bot.command()
-async def next_question(ctx: commands.Context):
+async def next_question(ctx: commands.Context[commands.Bot]):
     """Move to the next question in the quiz."""
     channel_id = ctx.channel.id
     if channel_id not in quizzes:
@@ -216,14 +256,18 @@ async def next_question(ctx: commands.Context):
         return
 
     # Disable the buttons in the previous question's message
-    if hasattr(quiz_instance, "last_message_id"):
+    if quiz_instance.last_message_id is not None:
         try:
             previous_message = await ctx.channel.fetch_message(
                 quiz_instance.last_message_id
             )
             if previous_message:
+                assert quiz_instance.current_view is not None, (
+                    "'curent_view' should not be None"
+                )
+
                 for item in quiz_instance.current_view.children:
-                    item.disabled = True
+                    item.disabled = True  # type: ignore | 'disabled' is a valid attribute
                 await previous_message.edit(
                     view=quiz_instance.current_view
                 )  # Edit the message to disable buttons
@@ -231,19 +275,23 @@ async def next_question(ctx: commands.Context):
             await ctx.send("Could not find the previous message to disable buttons.")
         except discord.Forbidden:
             await ctx.send("I don't have permission to edit the previous message.")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"[ERROR]: {e}")
+            await ctx.send(
+                "Unhandled server error, please contact the admin if issue persists"
+            )
 
     # Display results if at least one question has been asked
     if quiz_instance.current_question_index >= 0:
-        total_votes = sum(v for v in quiz_instance.votes.values() if isinstance(v, int))
+        total_votes: int = sum(quiz_instance.answer_votes.values())
 
         # Find longest quiz option (for result table formatting)
         longest_option_length = MIN_OPTION_LENGTH
-        for option in quiz_instance.votes:
-            if isinstance(quiz_instance.votes[option], int):
-                longest_option_length = max(len(option), longest_option_length)
-                if longest_option_length >= MAX_OPTION_LENGTH:
-                    longest_option_length = MAX_OPTION_LENGTH
-                    break
+        for option in quiz_instance.answer_votes:
+            longest_option_length = max(len(option), longest_option_length)
+            if longest_option_length >= MAX_OPTION_LENGTH:
+                longest_option_length = MAX_OPTION_LENGTH
+                break
 
         # Spaces for option portion of table
         option_spaces = max(MIN_OPTION_LENGTH, longest_option_length)
@@ -255,16 +303,15 @@ async def next_question(ctx: commands.Context):
         )
         result_table += "-" * (16 + option_spaces) + "\n"
 
-        for option in quiz_instance.votes:
-            if isinstance(quiz_instance.votes[option], int):
-                vote_count = quiz_instance.votes[option]
-                percentage = (vote_count / total_votes * 100) if total_votes > 0 else 0
-                if len(option) > MAX_OPTION_LENGTH:
-                    option = (
-                        option[: MAX_OPTION_LENGTH - 3] + "..."
-                    )  # Truncate long options
-                result_table += f"{option.ljust(option_spaces)}"
-                result_table += f" | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
+        for option in quiz_instance.answer_votes:
+            vote_count = quiz_instance.answer_votes[option]
+            percentage = (vote_count / total_votes * 100) if total_votes > 0 else 0
+            if len(option) > MAX_OPTION_LENGTH:
+                option = (
+                    option[: MAX_OPTION_LENGTH - 3] + "..."
+                )  # Truncate long options
+            result_table += f"{option.ljust(option_spaces)}"
+            result_table += f" | {str(vote_count).ljust(5)} | {percentage:.2f}%\n"
 
         await ctx.send(f"```{result_table}```")
 
@@ -273,7 +320,7 @@ async def next_question(ctx: commands.Context):
 
 
 @bot.command()
-async def upload_quiz(ctx: commands.Context):
+async def upload_quiz(ctx: commands.Context[commands.Bot]):
     """Upload a new quiz via a JSON file attachment."""
     if not ctx.message.attachments:
         await ctx.send("Please attach a JSON file with the quiz data.")
@@ -300,16 +347,14 @@ async def upload_quiz(ctx: commands.Context):
 
 
 @bot.command()
-async def force_quit(ctx: commands.Context):
+async def force_quit(ctx: commands.Context[commands.Bot]):
     """Forcefully quit any active quiz in the channel."""
     channel_id = ctx.channel.id
 
-    # Check if the user has "Manage Messages" permission or is the bot owner
-    has_permission = (
-        hasattr(ctx.author, 'guild_permissions') and
-        ctx.author.guild_permissions.manage_messages
-    )
-    if not has_permission and ctx.author.id != bot.owner_id:
+    if (
+        not has_permission(ctx.author, "manage_messages")
+        and ctx.author.id != bot.owner_id
+    ):
         await ctx.send(
             "You do not have permission to force quit quizzes in this channel."
         )

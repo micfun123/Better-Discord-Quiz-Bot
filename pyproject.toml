@@ -1,0 +1,17 @@
+[project]
+name = "Better-Discord-Quiz-Bot"
+description = "Discord bot designed to facilitate interactive quizzes within a Discord Server."
+readme = "README.md"
+version = "2026.0.0"
+authors = [{name = "Michael P"}, {name = "Oliver K"}]
+requires-python = ">= 3.12"
+dependencies = [
+    "discord.py==2.6.4",
+    "python-dotenv==1.2.1"
+]
+
+[project.urls]
+Repository = "https://github.com/micfun123/Better-Discord-Quiz-Bot"
+
+[project.optional-dependencies]
+dev = ["pylint", "isort"]
