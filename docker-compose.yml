@@ -1,0 +1,8 @@
+services:
+  quiz-bot:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./quiz_data.json:/app/quiz_data.json
+    restart: unless-stopped
